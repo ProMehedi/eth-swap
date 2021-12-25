@@ -1,3 +1,6 @@
+// Setup babel to use es2015
+require('@babel/register')
+
 // Enable env
 require('dotenv').config()
 
