@@ -46,12 +46,16 @@ contract('Token', (accounts) => {
   })
 
   describe('Sending tokens', () => {
+    const from = accounts[0]
+    const to = accounts[1]
+
+    let amount, result
+    beforeEach(async () => {
+      amount = tokens(100)
+      result = await token.transfer(to, amount, { from })
+    })
+
     it('Transfers token balances', async () => {
-      const from = accounts[0]
-      const to = accounts[1]
-
-      await token.transfer(to, tokens(100), { from })
-
       const fromBalance = await token.balanceOf(from)
       fromBalance.toString().should.equal(tokens(999900).toString())
 
@@ -60,6 +64,15 @@ contract('Token', (accounts) => {
 
       const totalSupply = await token.totalSupply()
       totalSupply.toString().should.equal(tokens(1000000).toString())
+    })
+
+    it('Emits a transfer event', async () => {
+      const log = result.logs[0]
+      log.event.should.equal('Transfer')
+      const event = log.args
+      event.from.should.equal(from)
+      event.to.should.equal(to)
+      event.value.toString().should.equal(amount.toString())
     })
   })
 })
