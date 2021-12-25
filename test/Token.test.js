@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { tokens } from '../utils'
+import { EVMThrow, tokens } from '../utils'
 const Token = artifacts.require('Token')
 
 chai.use(chaiAsPromised)
@@ -50,29 +50,49 @@ contract('Token', (accounts) => {
     const to = accounts[1]
 
     let amount, result
-    beforeEach(async () => {
-      amount = tokens(100)
-      result = await token.transfer(to, amount, { from })
+    describe('Successful transfer', () => {
+      beforeEach(async () => {
+        amount = tokens(100)
+        result = await token.transfer(to, amount, { from })
+      })
+
+      it('Transfers token balances', async () => {
+        const fromBalance = await token.balanceOf(from)
+        fromBalance.toString().should.equal(tokens(999900).toString())
+
+        const toBalance = await token.balanceOf(to)
+        toBalance.toString().should.equal(tokens(100).toString())
+
+        const totalSupply = await token.totalSupply()
+        totalSupply.toString().should.equal(tokens(1000000).toString())
+      })
+
+      it('Emits a transfer event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Transfer')
+        const event = log.args
+        event.from.should.equal(from)
+        event.to.should.equal(to)
+        event.value.toString().should.equal(amount.toString())
+      })
     })
 
-    it('Transfers token balances', async () => {
-      const fromBalance = await token.balanceOf(from)
-      fromBalance.toString().should.equal(tokens(999900).toString())
+    describe('Failed transfer', () => {
+      it('Rejects insufficient balances', async () => {
+        let inValidAmount = tokens(10000000)
+        await token
+          .transfer(to, inValidAmount, { from })
+          .should.be.rejectedWith(EVMThrow)
 
-      const toBalance = await token.balanceOf(to)
-      toBalance.toString().should.equal(tokens(100).toString())
+        inValidAmount = tokens(100)
+        await token
+          .transfer(from, inValidAmount, { from: to })
+          .should.be.rejectedWith(EVMThrow)
+      })
 
-      const totalSupply = await token.totalSupply()
-      totalSupply.toString().should.equal(tokens(1000000).toString())
-    })
-
-    it('Emits a transfer event', async () => {
-      const log = result.logs[0]
-      log.event.should.equal('Transfer')
-      const event = log.args
-      event.from.should.equal(from)
-      event.to.should.equal(to)
-      event.value.toString().should.equal(amount.toString())
+      it('Rejects invalid address', async () => {
+        await token.transfer(0x0, amount, { from }).should.be.rejected
+      })
     })
   })
 })
