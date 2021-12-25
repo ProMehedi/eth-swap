@@ -121,5 +121,17 @@ contract('Token', (accounts) => {
         event.value.toString().should.equal(amount.toString())
       })
     })
+
+    describe('Failed approval', () => {
+      it('Rejects insufficient balances', async () => {
+        await token
+          .approve(spender, tokens(10000000), { from })
+          .should.be.rejectedWith(EVMThrow)
+      })
+
+      it('Rejects invalid address', async () => {
+        await token.approve(0x0, amount, { from }).should.be.rejected
+      })
+    })
   })
 })
