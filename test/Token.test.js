@@ -95,4 +95,31 @@ contract('Token', (accounts) => {
       })
     })
   })
+
+  describe('Approving tokens', () => {
+    const from = accounts[0]
+    const spender = accounts[2]
+
+    let amount, result
+    beforeEach(async () => {
+      amount = tokens(100)
+      result = await token.approve(spender, amount, { from })
+    })
+
+    describe('Successful approval', () => {
+      it('Allocates an allowance for delegated token spending on exchange', async () => {
+        const allowance = await token.allowance(from, spender)
+        allowance.toString().should.equal(amount.toString())
+      })
+
+      it('Emits an approval event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Approval')
+        const event = log.args
+        event.owner.should.equal(from)
+        event.spender.should.equal(spender)
+        event.value.toString().should.equal(amount.toString())
+      })
+    })
+  })
 })
