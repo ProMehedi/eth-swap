@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { ETHER_ADDRESS, EVMThrow, tokens } from '../utils'
+import { ether, ETHER_ADDRESS, EVMThrow, tokens } from '../utils'
 const Token = artifacts.require('Token')
 const Exchange = artifacts.require('Exchange')
 
@@ -30,6 +30,40 @@ contract('Exchange', (accounts) => {
     it('Tracks the fee rate', async () => {
       const _feeRate = await exchange.feeRate()
       _feeRate.toNumber().should.equal(feePercent)
+    })
+  })
+
+  describe('Fallback', () => {
+    it('Rejects when Ether is sent', async () => {
+      await exchange
+        .sendTransaction({ value: ether(1), from: user1 })
+        .should.be.rejectedWith(EVMThrow)
+    })
+  })
+
+  describe('Depositing Ether', () => {
+    const amount = ether(1)
+
+    describe('Successful deposit', () => {
+      let result
+      beforeEach(async () => {
+        result = await exchange.depositEther({ from: user1, value: amount })
+      })
+
+      it('Track the ether balance', async () => {
+        const balance = await exchange.tokens(ETHER_ADDRESS, user1)
+        balance.toString().should.equal(amount.toString())
+      })
+
+      it('Emits a Deposit event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Deposit')
+        const event = log.args
+        event.token.should.equal(ETHER_ADDRESS)
+        event.user.should.equal(user1)
+        event.amount.toString().should.equal(amount.toString())
+        event.balance.toString().should.equal(amount.toString())
+      })
     })
   })
 

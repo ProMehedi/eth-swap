@@ -22,6 +22,11 @@ contract Exchange {
     feeRate = _feeRate;
   }
 
+  // Fallback: if Ether is sent to the contract by mistake
+  fallback() external {
+    revert();
+  }
+
   // Deposit Ether
   function depositEther() public payable {
     tokens[ETHER][msg.sender] = tokens[ETHER][msg.sender].add(msg.value);
