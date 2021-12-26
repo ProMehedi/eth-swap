@@ -55,6 +55,7 @@ contract Token {
 
   // Transfer From Tokens
   function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+    allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);
     _transfer(_from, _to, _value);
     return true;
   }

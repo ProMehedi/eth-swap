@@ -134,4 +134,47 @@ contract('Token', (accounts) => {
       })
     })
   })
+
+  describe('Transfer from', () => {
+    const from = accounts[0]
+    const to = accounts[1]
+    const spender = accounts[2]
+
+    let amount, result
+    beforeEach(async () => {
+      amount = tokens(100)
+      await token.approve(spender, amount, { from })
+    })
+
+    describe('Successful transfer', () => {
+      beforeEach(async () => {
+        result = await token.transferFrom(from, to, amount, { from: spender })
+      })
+
+      it('Transfers token balances', async () => {
+        const fromBalance = await token.balanceOf(from)
+        fromBalance.toString().should.equal(tokens(999900).toString())
+
+        const toBalance = await token.balanceOf(to)
+        toBalance.toString().should.equal(tokens(100).toString())
+
+        const totalSupply = await token.totalSupply()
+        totalSupply.toString().should.equal(tokens(1000000).toString())
+      })
+
+      it('Resets the allowance', async () => {
+        const allowance = await token.allowance(from, spender)
+        allowance.toString().should.equal('0')
+      })
+
+      it('Emits a transfer event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Transfer')
+        const event = log.args
+        event.from.should.equal(from)
+        event.to.should.equal(to)
+        event.value.toString().should.equal(amount.toString())
+      })
+    })
+  })
 })
