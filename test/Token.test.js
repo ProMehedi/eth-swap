@@ -135,7 +135,7 @@ contract('Token', (accounts) => {
     })
   })
 
-  describe('Transfer from', () => {
+  describe('Delegated Token Transfer', () => {
     const from = accounts[0]
     const to = accounts[1]
     const spender = accounts[2]
@@ -174,6 +174,25 @@ contract('Token', (accounts) => {
         event.from.should.equal(from)
         event.to.should.equal(to)
         event.value.toString().should.equal(amount.toString())
+      })
+    })
+
+    describe('Failed transfer', () => {
+      it('Rejects insufficient balances', async () => {
+        await token
+          .transferFrom(from, to, tokens(10000000), { from: spender })
+          .should.be.rejectedWith(EVMThrow)
+      })
+
+      it('Rejects invalid address', async () => {
+        await token.transferFrom(0x0, to, amount, { from: spender }).should.be
+          .rejected
+      })
+
+      it('Rejects insufficient allowance', async () => {
+        await token
+          .transferFrom(from, to, tokens(1000), { from: spender })
+          .should.be.rejectedWith(EVMThrow)
       })
     })
   })
