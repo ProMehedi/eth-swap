@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { EVMThrow, tokens } from '../utils'
+import { ETHER_ADDRESS, EVMThrow, tokens } from '../utils'
 const Token = artifacts.require('Token')
 const Exchange = artifacts.require('Exchange')
 
@@ -37,9 +37,8 @@ contract('Exchange', (accounts) => {
     const from = accounts[0]
     const to = accounts[1]
 
-    let amount, result
     describe('Successful transfer', () => {
-      let result
+      let amount, result
       beforeEach(async () => {
         amount = tokens(100)
         await token.approve(exchange.address, amount, { from: user1 })
@@ -49,8 +48,37 @@ contract('Exchange', (accounts) => {
       })
 
       it('Tracks the token deposit', async () => {
+        // Check exchange token balance
         const userBalance = await token.balanceOf(exchange.address)
         userBalance.toString().should.equal(amount.toString())
+
+        // Check tokens on the exchange
+        const user1Balance = await exchange.tokens(token.address, user1)
+        user1Balance.toString().should.equal(amount.toString())
+      })
+
+      it('Emits a Deposit event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Deposit')
+        const event = log.args
+        event.token.should.equal(token.address)
+        event.user.should.equal(user1)
+        event.amount.toString().should.equal(amount.toString())
+        event.balance.toString().should.equal(amount.toString())
+      })
+    })
+
+    describe('Failed transfer', () => {
+      it('Rejects Ether deposits', async () => {
+        await exchange
+          .depositToken(ETHER_ADDRESS, tokens(100), { from: user1 })
+          .should.be.rejectedWith(EVMThrow)
+      })
+
+      it('Rejects when no tokens are approved', async () => {
+        await exchange
+          .depositToken(token.address, tokens(100), { from: user1 })
+          .should.be.rejectedWith(EVMThrow)
       })
     })
   })
