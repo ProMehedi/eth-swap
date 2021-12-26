@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { EVMThrow, tokens } from '../utils'
