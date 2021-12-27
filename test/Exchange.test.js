@@ -67,10 +67,25 @@ contract('Exchange', (accounts) => {
     })
   })
 
-  describe('Depositing tokens', () => {
-    const from = accounts[0]
-    const to = accounts[1]
+  describe('Withdrawing Ether', () => {
+    let result, amount
+    beforeEach(async () => {
+      amount = ether(1)
+      await exchange.depositEther({ from: user1, value: amount })
+    })
+    describe('Successful withdrawal', () => {
+      beforeEach(async () => {
+        result = await exchange.withdrawEther(amount, { from: user1 })
+      })
 
+      it('Withdraws the ether', async () => {
+        const balance = await exchange.tokens(ETHER_ADDRESS, user1)
+        balance.toString().should.equal('0')
+      })
+    })
+  })
+
+  describe('Depositing tokens', () => {
     describe('Successful transfer', () => {
       let amount, result
       beforeEach(async () => {
