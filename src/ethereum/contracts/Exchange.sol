@@ -46,7 +46,7 @@ contract Exchange {
   function depositToken(address _token, uint256 _amount) public {
     require(_token != ETHER);
     require(Token(_token).transferFrom(msg.sender, address(this), _amount));
-    
+
     tokens[_token][msg.sender] = tokens[_token][msg.sender].add(_amount);
     emit Deposit(_token, msg.sender, _amount, tokens[_token][msg.sender]);
   }
@@ -59,5 +59,10 @@ contract Exchange {
 
     tokens[_token][msg.sender] = tokens[_token][msg.sender].sub(_amount);
     emit Withdraw(_token, msg.sender, _amount, tokens[_token][msg.sender]);
+  }
+
+  // Get balance
+  function balanceOf(address _token, address _user) public view returns (uint256) {
+    return tokens[_token][_user];
   }
 }

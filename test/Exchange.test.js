@@ -199,4 +199,15 @@ contract('Exchange', (accounts) => {
       })
     })
   })
+
+  describe('Checking balances', () => {
+    beforeEach(async () => {
+      await exchange.depositEther({ from: user1, value: ether(1) })
+    })
+
+    it('Returns the balance of an account', async () => {
+      const balance = await exchange.balanceOf(ETHER_ADDRESS, user1)
+      balance.toString().should.equal(ether(1).toString())
+    })
+  })
 })
