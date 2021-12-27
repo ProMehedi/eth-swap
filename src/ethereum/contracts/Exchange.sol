@@ -12,10 +12,24 @@ contract Exchange {
   uint256 public feeRate;
   address constant ETHER = address(0);
   mapping (address => mapping (address => uint256)) public tokens;
+  mapping (uint256 => Order) public orders;
+  uint256 public orderCount;
+
+  // Orders are stored in a tree-like structure
+  struct Order {
+    uint id;
+    address user;
+    address tokenGet;
+    uint amountGet;
+    address tokenGive;
+    uint amountGive;
+    uint timestamp;
+  }
 
   // Events
   event Deposit(address indexed token, address indexed user, uint256 amount, uint256 balance);
   event Withdraw(address indexed token, address indexed user, uint256 amount, uint256 balance);
+  event Trade(uint indexed id, address indexed user, address tokenGet, uint amountGet, address tokenGive, uint amountGive, uint timestamp);
 
   // Constructor
   constructor(address _feeAccount, uint256 _feeRate) {
@@ -64,5 +78,12 @@ contract Exchange {
   // Get balance
   function balanceOf(address _token, address _user) public view returns (uint256) {
     return tokens[_token][_user];
+  }
+
+  // Make an order
+  function makeOrder(address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) public {
+    orderCount = orderCount.add(1);
+    orders[orderCount] = Order(orderCount, msg.sender, _tokenGet, _amountGet, _tokenGive, _amountGive, block.timestamp);
+    emit Trade(orderCount, msg.sender, _tokenGet, _amountGet, _tokenGive, _amountGive, block.timestamp);
   }
 }
