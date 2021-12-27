@@ -15,6 +15,7 @@ contract Exchange {
 
   // Events
   event Deposit(address indexed token, address indexed user, uint256 amount, uint256 balance);
+  event Withdraw(address indexed token, address indexed user, uint256 amount, uint256 balance);
 
   // Constructor
   constructor(address _feeAccount, uint256 _feeRate) {
@@ -35,16 +36,28 @@ contract Exchange {
 
   // Withdraw Ether
   function withdrawEther(uint256 _amount) public {
+    require(_amount <= tokens[ETHER][msg.sender]);
     tokens[ETHER][msg.sender] = tokens[ETHER][msg.sender].sub(_amount);
+    payable(msg.sender).transfer(_amount);
+    emit Withdraw(ETHER, msg.sender, _amount, tokens[ETHER][msg.sender]);
   }
 
   // Deposit Token
   function depositToken(address _token, uint256 _amount) public {
     require(_token != ETHER);
     require(Token(_token).transferFrom(msg.sender, address(this), _amount));
+    
     tokens[_token][msg.sender] = tokens[_token][msg.sender].add(_amount);
     emit Deposit(_token, msg.sender, _amount, tokens[_token][msg.sender]);
   }
 
-  
+  // Withdraw Token
+  function withdrawToken(address _token, uint256 _amount) public {
+    require(_token != ETHER);
+    require(tokens[_token][msg.sender] >= _amount);
+    require(Token(_token).transfer(msg.sender, _amount));
+
+    tokens[_token][msg.sender] = tokens[_token][msg.sender].sub(_amount);
+    emit Withdraw(_token, msg.sender, _amount, tokens[_token][msg.sender]);
+  }
 }
