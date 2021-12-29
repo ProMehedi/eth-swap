@@ -15,6 +15,7 @@ contract Exchange {
   mapping (uint256 => _Order) public orders;
   uint256 public orderCount;
   mapping(uint256 => bool) public orderCancelled;
+  mapping(uint256 => bool) public orderFilled;
 
   // Orders are stored in a tree-like structure
   struct _Order {
@@ -32,6 +33,7 @@ contract Exchange {
   event Withdraw(address indexed token, address indexed user, uint256 amount, uint256 balance);
   event Order(uint256 indexed id, address indexed user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, uint256 timestamp);
   event Cancel(uint256 indexed id, address indexed user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, uint256 timestamp);
+  event Trade(uint256 indexed id, address indexed user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, address userFill, uint256 timestamp);
 
   // Constructor
   constructor(address _feeAccount, uint256 _feeRate) {
@@ -97,5 +99,32 @@ contract Exchange {
 
     orderCancelled[_orderId] = true;
     emit Cancel(_order.id, msg.sender, _order.tokenGet, _order.amountGet, _order.tokenGive, _order.amountGive, block.timestamp);
+  }
+
+  // Fill an order
+  function fillOrder(uint256 _orderId) public {
+    require(!orderFilled[_orderId]);
+    require(orderCancelled[_orderId]);
+    require(_orderId > 0 && _orderId <= orderCount);
+
+    _Order storage _order = orders[_orderId];
+    _trade(_order.id, _order.user, _order.tokenGet, _order.amountGet, _order.tokenGive, _order.amountGive);
+    orderFilled[_order.id] = true;
+  }
+
+  function _trade(uint256 _orderId, address _user, address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) internal {
+    uint256 _feeAmount = _amountGive.mul(feeRate).div(100);
+
+    // Execute trade
+    tokens[_tokenGet][msg.sender] = tokens[_tokenGet][msg.sender].sub(_amountGet.add(_feeAmount));
+    tokens[_tokenGet][_user] = tokens[_tokenGet][_user].add(_amountGet);
+    tokens[_tokenGive][_user] = tokens[_tokenGive][_user].sub(_amountGive);
+    tokens[_tokenGive][msg.sender] = tokens[_tokenGive][msg.sender].add(_amountGive);
+
+    // Charge fee
+    tokens[_tokenGet][feeAccount] = tokens[_tokenGet][feeAccount].add(_feeAmount);
+
+    // Emit events
+    emit Trade(_orderId, _user, _tokenGet, _amountGet, _tokenGive, _amountGive, msg.sender, block.timestamp);
   }
 }
