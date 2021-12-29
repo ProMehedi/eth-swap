@@ -210,4 +210,36 @@ contract('Exchange', (accounts) => {
       balance.toString().should.equal(ether(1).toString())
     })
   })
+
+  describe('Making orders', () => {
+    const amount = ether(1)
+
+    describe('Successful order', () => {
+      let result
+      beforeEach(async () => {
+        result = await exchange.makeOrder(
+          token.address,
+          amount,
+          ETHER_ADDRESS,
+          amount,
+          { from: user1 }
+        )
+      })
+
+      it('Tracks the order', async () => {
+        const orderCount = await exchange.orderCount()
+        orderCount.toString().should.equal('1')
+      })
+
+      it('Emits an Order event', async () => {
+        const log = result.logs[0]
+        log.event.should.equal('Order')
+        const event = log.args
+        event.tokenGet.should.equal(token.address)
+        event.amountGet.toString().should.equal(amount.toString())
+        event.tokenGive.should.equal(ETHER_ADDRESS)
+        event.amountGive.toString().should.equal(amount.toString())
+      })
+    })
+  })
 })
