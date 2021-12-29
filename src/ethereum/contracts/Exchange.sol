@@ -14,22 +14,24 @@ contract Exchange {
   mapping (address => mapping (address => uint256)) public tokens;
   mapping (uint256 => _Order) public orders;
   uint256 public orderCount;
+  mapping(uint256 => bool) public orderCancelled;
 
   // Orders are stored in a tree-like structure
   struct _Order {
-    uint id;
+    uint256 id;
     address user;
     address tokenGet;
-    uint amountGet;
+    uint256 amountGet;
     address tokenGive;
-    uint amountGive;
-    uint timestamp;
+    uint256 amountGive;
+    uint256 timestamp;
   }
 
   // Events
   event Deposit(address indexed token, address indexed user, uint256 amount, uint256 balance);
   event Withdraw(address indexed token, address indexed user, uint256 amount, uint256 balance);
-  event Order(uint indexed id, address indexed user, address tokenGet, uint amountGet, address tokenGive, uint amountGive, uint timestamp);
+  event Order(uint256 indexed id, address indexed user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, uint256 timestamp);
+  event Cancel(uint256 indexed id, address indexed user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, uint256 timestamp);
 
   // Constructor
   constructor(address _feeAccount, uint256 _feeRate) {
@@ -85,5 +87,15 @@ contract Exchange {
     orderCount = orderCount.add(1);
     orders[orderCount] = _Order(orderCount, msg.sender, _tokenGet, _amountGet, _tokenGive, _amountGive, block.timestamp);
     emit Order(orderCount, msg.sender, _tokenGet, _amountGet, _tokenGive, _amountGive, block.timestamp);
+  }
+
+  // Cancel an order
+  function cancelOrder(uint256 _orderId) public {
+    _Order storage _order = orders[_orderId];
+    require(_order.user == msg.sender);
+    require(!orderCancelled[_orderId]);
+
+    orderCancelled[_orderId] = true;
+    emit Cancel(_order.id, msg.sender, _order.tokenGet, _order.amountGet, _order.tokenGive, _order.amountGive, block.timestamp);
   }
 }
