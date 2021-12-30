@@ -1,5 +1,12 @@
+/* eslint-disable no-undef */
 const Token = artifacts.require('Token')
+const Exchange = artifacts.require('Exchange')
 
-module.exports = function (deployer) {
-  deployer.deploy(Token)
+module.exports = async function (deployer) {
+  const accounts = await web3.eth.getAccounts()
+  const feeAccount = accounts[0]
+  const feeRate = 10
+
+  await deployer.deploy(Token)
+  await deployer.deploy(Exchange, feeAccount, feeRate)
 }
