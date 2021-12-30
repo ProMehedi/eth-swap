@@ -12,6 +12,7 @@ contract('Exchange', (accounts) => {
   const deployer = accounts[0]
   const feeAccount = accounts[1]
   const user1 = accounts[2]
+  const user2 = accounts[3]
   const feePercent = 10
 
   let exchange, token
@@ -20,7 +21,7 @@ contract('Exchange', (accounts) => {
     token.transfer(user1, tokens(1000), { from: deployer })
     exchange = await Exchange.new(feeAccount, feePercent)
   })
-  /*
+
   describe('Deployment', () => {
     it('Tracks the fee account', async () => {
       const _feeAccount = await exchange.feeAccount()
@@ -251,28 +252,97 @@ contract('Exchange', (accounts) => {
       event.timestamp.toString().length.should.be.at.least(1)
     })
   })
-  */
 
   describe('Order actions', () => {
-    const amount = ether(1)
-
     beforeEach(async () => {
+      // user1 deposits ether only
       await exchange.depositEther({ from: user1, value: ether(1) })
+      // give tokens to user2
+      await token.transfer(user2, tokens(100), { from: deployer })
+      // user2 deposits tokens
+      await token.approve(exchange.address, tokens(2), { from: user2 })
+      await exchange.depositToken(token.address, tokens(2), { from: user2 })
+      // user1 makes an order to buy tokens with ether
       await exchange.makeOrder(
         token.address,
         tokens(1),
         ETHER_ADDRESS,
-        amount,
-        {
-          from: user1,
-        }
+        ether(1),
+        { from: user1 }
       )
+    })
+
+    describe('Filling orders', () => {
+      describe('Successful fill', () => {
+        let result
+        beforeEach(async () => {
+          // user2 fills the order
+          result = await exchange.fillOrder('1', { from: user2 })
+        })
+
+        it('Executes the order & charges fees', async () => {
+          let balance
+          balance = await exchange.balanceOf(token.address, user1)
+          balance.toString().should.equal(tokens(1).toString())
+          balance = await exchange.balanceOf(ETHER_ADDRESS, user2)
+          balance.toString().should.equal(ether(1).toString())
+          balance = await exchange.balanceOf(ETHER_ADDRESS, user1)
+          balance.toString().should.equal('0')
+          balance = await exchange.balanceOf(token.address, user2)
+          balance.toString().should.equal(tokens(0.9).toString())
+          const _feeAccount = await exchange.feeAccount()
+          balance = await exchange.balanceOf(token.address, _feeAccount)
+          balance.toString().should.equal(tokens(0.1).toString())
+        })
+
+        it('Updates filled orders', async () => {
+          const orderFilled = await exchange.orderFilled('1')
+          orderFilled.should.equal(true)
+        })
+
+        it('Emits a Trade event', async () => {
+          const log = result.logs[0]
+          log.event.should.equal('Trade')
+          const event = log.args
+          event.id.toString().should.equal('1')
+          event.user.should.equal(user1)
+          event.tokenGet.should.equal(token.address)
+          event.amountGet.toString().should.equal(tokens(1).toString())
+          event.tokenGive.should.equal(ETHER_ADDRESS)
+          event.amountGive.toString().should.equal(ether(1).toString())
+          event.userFill.should.equal(user2)
+          event.timestamp.toString().length.should.be.at.least(1)
+        })
+      })
+
+      describe('Failing fill', () => {
+        it('Rejects invalid order ids', async () => {
+          await exchange
+            .fillOrder('0', { from: user2 })
+            .should.be.rejectedWith(EVMThrow)
+        })
+
+        it('Rejects already-filled orders', async () => {
+          await exchange.fillOrder('1', { from: user2 }).should.be.fulfilled
+          await exchange
+            .fillOrder('1', { from: user2 })
+            .should.be.rejectedWith(EVMThrow)
+        })
+
+        it('Rejects cancelled orders', async () => {
+          await exchange.cancelOrder('1', { from: user1 }).should.be.fulfilled
+          await exchange
+            .fillOrder('1', { from: user2 })
+            .should.be.rejectedWith(EVMThrow)
+        })
+      })
     })
 
     describe('Cancelling orders', () => {
       describe('Successful cancellation', () => {
-        let result
+        let result, amount
         beforeEach(async () => {
+          amount = ether(1)
           result = await exchange.cancelOrder('1', { from: user1 })
         })
 

@@ -103,9 +103,9 @@ contract Exchange {
 
   // Fill an order
   function fillOrder(uint256 _orderId) public {
-    require(!orderFilled[_orderId]);
-    require(orderCancelled[_orderId]);
-    require(_orderId > 0 && _orderId <= orderCount);
+    require(!orderFilled[_orderId], "Order already filled");
+    require(!orderCancelled[_orderId], "Order already cancelled");
+    require(_orderId > 0 && _orderId <= orderCount, "Invalid order ID");
 
     _Order storage _order = orders[_orderId];
     _trade(_order.id, _order.user, _order.tokenGet, _order.amountGet, _order.tokenGive, _order.amountGive);
